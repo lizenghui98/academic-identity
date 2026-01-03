@@ -53,8 +53,15 @@ const LifeLog: React.FC = () => {
           {/* Left Column: Index & Context (Editorial Style) */}
           <div className="w-full lg:w-1/3 space-y-12 z-20 pointer-events-none">
             <div className="pointer-events-auto">
-              <h2 className="text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-linen leading-none tracking-tighter mb-4 mix-blend-difference">
-                {UI_TEXT.navLife[locale]}
+              <h2 className="text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-linen leading-none tracking-tighter mb-4 mix-blend-difference flex flex-wrap">
+                {locale === 'zh' ? (
+                  <>
+                    <span className="whitespace-nowrap">我的</span>
+                    <span className="whitespace-nowrap">生活</span>
+                  </>
+                ) : (
+                  UI_TEXT.navLife[locale]
+                )}
               </h2>
               <div className="h-2 w-24 bg-gold"></div>
             </div>
