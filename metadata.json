@@ -1,0 +1,7 @@
+{
+  "name": "Academic Identity: The Modern Agricultural Economist",
+  "description": "A high-end personal academic website for a PhD student in Agricultural Economics, featuring a 'Reason & Soil' design philosophy with modern data visualizations and an editorial aesthetic.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

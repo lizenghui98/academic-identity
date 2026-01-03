@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic Identity | Ph.D. Portfolio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Inter:wght@300;400;600&family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            moss: '#2A4B34',
+            slate: '#4A6FA5',
+            gold: '#D4AF37',
+            linen: '#F9F8F4',
+            charcoal: '#1A1A1A',
+            frog: '#4ade80',
+          },
+          fontFamily: {
+            serif: ['Fraunces', 'Noto Serif SC', 'serif'],
+            sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+          },
+          animation: {
+            'jelly': 'jelly 0.6s both',
+            'float': 'float 3s ease-in-out infinite',
+            'peek': 'peek 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            'peek-left': 'peek-left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            'progress': 'progress 5s linear infinite',
+            'zoom-in': 'zoom-in 10s linear infinite',
+          },
+          keyframes: {
+            jelly: {
+              '0%': { transform: 'scale(1, 1)' },
+              '30%': { transform: 'scale(1.25, 0.75)' },
+              '40%': { transform: 'scale(0.75, 1.25)' },
+              '50%': { transform: 'scale(1.15, 0.85)' },
+              '65%': { transform: 'scale(0.95, 1.05)' },
+              '75%': { transform: 'scale(1.05, 0.95)' },
+              '100%': { transform: 'scale(1, 1)' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            },
+            peek: {
+              '0%': { transform: 'translate(0, 50px) rotate(-20deg)', opacity: '0' },
+              '100%': { transform: 'translate(120px, -80px) rotate(15deg)', opacity: '1' }
+            },
+            'peek-left': {
+              '0%': { transform: 'translate(0, 50px) rotate(20deg)', opacity: '0' },
+              '100%': { transform: 'translate(-20px, -100px) rotate(-10deg)', opacity: '1' }
+            },
+            progress: {
+              '0%': { width: '0%' },
+              '100%': { width: '100%' }
+            },
+            'zoom-in': {
+              '0%': { transform: 'scale(1)' },
+              '100%': { transform: 'scale(1.1)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F9F8F4;
+      color: #1A1A1A;
+      scroll-behavior: smooth;
+    }
+    .text-balance {
+      text-wrap: balance;
+    }
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(42, 75, 52, 0.05) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(42, 75, 52, 0.05) 1px, transparent 1px);
+    }
+    .sticker-effect {
+      filter: drop-shadow(4px 4px 0px white) drop-shadow(-4px -4px 0px white) drop-shadow(4px -4px 0px white) drop-shadow(-4px 4px 0px white) drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+    }
+    .frog-mask {
+       border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+       transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .frog-mask:hover {
+       border-radius: 50%;
+    }
+    /* 现代画刊特有的文本排版 */
+    .vertical-text {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.0.0",
+    "react-dom": "https://esm.sh/react-dom@^19.0.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="font-sans antialiased">
+  <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
