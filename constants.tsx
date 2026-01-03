@@ -30,8 +30,8 @@ export const HERO_ASSETS = {
 // 关于我资产引用
 export const ABOUT_ASSETS = {
   mainAvatar: "/avatar/me.png",    // 主头像
-  sticker1: "/public/heropic/herosticker/sticker1.png",     // 探头贴纸1 (右侧)
-  sticker2: "/public/heropic/herosticker/sticker2.png",     // 探头贴纸2 (左侧)
+  sticker1: "/heropic/herosticker/sticker1.png",     // 探头贴纸1 (右侧)
+  sticker2: "/heropic/herosticker/sticker2.png",     // 探头贴纸2 (左侧)
 };
 
 /**
