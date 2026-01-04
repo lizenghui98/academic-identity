@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from './LanguageContext';
 import { UI_TEXT, SKILLS_DATA, ABOUT_ASSETS } from '../constants';
 
@@ -7,6 +7,30 @@ const About: React.FC = () => {
   const { locale } = useLanguage();
   const [bubble, setBubble] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isAutoActive, setIsAutoActive] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsAutoActive(true);
+          setTimeout(() => {
+            setIsAutoActive(false);
+          }, 3000);
+          // 停止观察，因为只需要触发一次
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleClick = () => {
     const quotes = UI_TEXT.aboutQuotes[locale];
@@ -16,7 +40,7 @@ const About: React.FC = () => {
   };
 
   return (
-    <section id="about" className="py-24 md:py-32 px-6 md:px-24 bg-linen relative overflow-hidden">
+    <section ref={sectionRef} id="about" className="py-24 md:py-32 px-6 md:px-24 bg-linen relative overflow-hidden">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16 md:gap-24">
         
         {/* Interactive Double Headshot Container */}
@@ -35,7 +59,7 @@ const About: React.FC = () => {
             )}
 
             {/* Background "Peeking" Head (小朋友) */}
-            <div className={`absolute transition-all duration-500 transform ${isHovered ? 'animate-peek' : 'opacity-0 translate-y-10'}`}>
+            <div className={`absolute transition-all duration-500 transform ${(isHovered || isAutoActive) ? 'animate-peek' : 'opacity-0 translate-y-10'}`}>
                <img 
                 src={ABOUT_ASSETS.sticker1} 
                 className="w-32 h-32 md:w-40 md:h-40 object-contain sticker-effect"
@@ -44,7 +68,7 @@ const About: React.FC = () => {
             </div>
 
             {/* Background "Peeking" Head Left (另一个贴纸) */}
-            <div className={`absolute transition-all duration-500 transform ${isHovered ? 'animate-peek-left' : 'opacity-0 translate-y-10'}`}>
+            <div className={`absolute transition-all duration-500 transform ${(isHovered || isAutoActive) ? 'animate-peek-left' : 'opacity-0 translate-y-10'}`}>
                <img 
                 src={ABOUT_ASSETS.sticker2} 
                 className="w-32 h-32 md:w-40 md:h-40 object-contain sticker-effect"

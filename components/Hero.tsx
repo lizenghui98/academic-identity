@@ -1,11 +1,35 @@
 
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLanguage } from './LanguageContext';
 import { UI_TEXT, HERO_IMAGE, HERO_FOOTER_TEXT, HERO_ASSETS } from '../constants';
 import DynamicChart from './DynamicChart';
 
 const Hero: React.FC = () => {
   const { locale } = useLanguage();
+  const [isAutoActive, setIsAutoActive] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsAutoActive(true);
+          setTimeout(() => {
+            setIsAutoActive(false);
+          }, 3000);
+          // 停止观察，因为只需要触发一次
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const navLinks = [
     { name: UI_TEXT.navAbout[locale], href: '#about' },
@@ -16,7 +40,7 @@ const Hero: React.FC = () => {
   ];
 
   return (
-    <section className="relative min-h-screen pt-24 md:pt-0 flex flex-col md:flex-row items-center overflow-hidden bg-grid">
+    <section ref={sectionRef} className="relative min-h-screen pt-24 md:pt-0 flex flex-col md:flex-row items-center overflow-hidden bg-grid">
       <div className="w-full md:w-3/5 px-6 md:px-24 py-12 md:py-0 z-10">
         <div className="space-y-4 relative">
           <span className="inline-block px-3 py-1 bg-gold/10 text-gold text-xs font-bold uppercase tracking-[0.2em] rounded">
@@ -26,7 +50,7 @@ const Hero: React.FC = () => {
             {locale === 'zh' ? '李增辉' : 'Zenghui Li'}<span className="text-gold">.</span>
             
             {/* 隐藏的彩蛋：鼠标移到名字上时，小朋友的头会从名字后面冒出来 */}
-            <div className="absolute -top-32 -right-32 w-64 h-64 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-50 group-hover:scale-100 pointer-events-none">
+            <div className={`absolute -top-32 -right-32 w-64 h-64 transition-all duration-300 transform pointer-events-none ${isAutoActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100'}`}>
               <div className="relative w-full h-full">
                 <img 
                   src={HERO_ASSETS.easterEggKid} 

@@ -71,7 +71,7 @@ const LifeLog: React.FC = () => {
                 0{currentIndex + 1}
               </span>
               <p className="text-sm font-bold uppercase tracking-[0.4em] text-gold/80 vertical-text h-64">
-                {locale === 'zh' ? '· 生活即学术 · 记录瞬间 ·' : '· LIFE AS RESEARCH · MOMENTS ·'}
+                {locale === 'zh' ? '· 生活的瞬间 ·' : '· LIFE · MOMENTS ·'}
               </p>
             </div>
 
