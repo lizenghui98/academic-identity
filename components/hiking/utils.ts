@@ -27,16 +27,8 @@ export const parseGPX = async (url: string): Promise<HikingStats> => {
     duration = endTime.getTime() - startTime.getTime();
   }
 
-  // Try to extract elevation gain from extensions if gpxparser missed it
-  let elevationGain = track.elevation.pos || 0;
-  if (elevationGain === 0) {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(gpxData, "text/xml");
-    const cumulativeClimb = xmlDoc.getElementsByTagName("cumulativeClimb")[0];
-    if (cumulativeClimb && cumulativeClimb.textContent) {
-      elevationGain = parseFloat(cumulativeClimb.textContent);
-    }
-  }
+  // Extract elevation gain from gpxparser
+  const elevationGain = track.elevation.pos || 0;
 
   return {
     name: gpx.metadata.name || "No.1",
