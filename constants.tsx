@@ -307,5 +307,21 @@ export const UI_TEXT: Record<string, BilingualText> = {
   location: { en: 'Zhejiang University, CARD, Hangzhou, China', zh: '浙江大学 中国农村发展研究院 (CARD)' },
   footerResearchNodes: { en: 'Research Nodes', zh: '学术节点' },
   footerNav: { en: 'Navigation', zh: '快速导航' },
-  footerConnect: { en: 'Connect', zh: '社交媒体' }
+  footerConnect: { en: 'Connect', zh: '社交媒体' },
+
+  // 登山计划
+  hikingTitle: { en: 'Go For 2026', zh: '2026 登山计划' },
+  hikingSubtitle: { en: 'Scaling peaks, finding peace.', zh: '在数据与泥土之间，也在群山之巅。' },
+  totalDistance: { en: 'Total Distance', zh: '总里程' },
+  totalElevation: { en: 'Total Elevation', zh: '总爬升' },
+  hikesCount: { en: 'Total Hikes', zh: '登山次数' },
+  activityAnalysis: { en: 'Activity Analysis', zh: '运动分析' },
+  duration: { en: 'Duration', zh: '用时' },
+  elevationGain: { en: 'Elevation Gain', zh: '海拔上升' },
+  avgSpeed: { en: 'Avg Speed', zh: '平均速度' },
+  startTime: { en: 'Start Time', zh: '开始时间' },
+  trackingSource: { en: 'Tracking Source', zh: '数据来源' },
+  completedStatus: { en: 'COMPLETED', zh: '已完成' },
+  miFitness: { en: 'Mi Fitness Export', zh: '小米运动健康导出' },
+  backToHome: { en: 'Back to Home', zh: '返回主页' }
 };
