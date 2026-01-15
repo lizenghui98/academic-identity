@@ -35,8 +35,27 @@ const GoFor2026: React.FC = () => {
         const loadedHikes = await Promise.all(
           hikeFilenames.map(filename => parseGPX(`/data/hiking/${filename}`))
         );
-        // Sort by date descending
-        const sortedHikes = loadedHikes.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+
+        // 1. Sort chronologically to assign "No.X" sequence
+        const chronologicalHikes = [...loadedHikes].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+        // 2. Assign names based on sequence and date: No.序号_YYYYMMDD
+        const namedHikes = chronologicalHikes.map((hike, index) => {
+          const date = hike.startTime;
+          const yyyy = date.getFullYear();
+          const mm = String(date.getMonth() + 1).padStart(2, '0');
+          const dd = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${yyyy}${mm}${dd}`;
+          
+          return {
+            ...hike,
+            name: `No.${index + 1}_${dateStr}`
+          };
+        });
+
+        // 3. Sort by date descending for display (latest first)
+        const sortedHikes = namedHikes.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+        
         setHikes(sortedHikes);
         if (sortedHikes.length > 0) {
           setSelectedHike(sortedHikes[0]);

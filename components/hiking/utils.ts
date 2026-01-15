@@ -16,7 +16,6 @@ export const parseGPX = async (url: string): Promise<HikingStats> => {
   gpx.parse(gpxData);
 
   const track = gpx.tracks[0];
-  const stats = track.distance;
   
   // Calculate duration if time exists
   let duration = 0;
@@ -28,10 +27,21 @@ export const parseGPX = async (url: string): Promise<HikingStats> => {
     duration = endTime.getTime() - startTime.getTime();
   }
 
+  // Try to extract elevation gain from extensions if gpxparser missed it
+  let elevationGain = track.elevation.pos || 0;
+  if (elevationGain === 0) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(gpxData, "text/xml");
+    const cumulativeClimb = xmlDoc.getElementsByTagName("cumulativeClimb")[0];
+    if (cumulativeClimb && cumulativeClimb.textContent) {
+      elevationGain = parseFloat(cumulativeClimb.textContent);
+    }
+  }
+
   return {
     name: gpx.metadata.name || "No.1",
     distance: track.distance.total,
-    elevationGain: track.elevation.pos || 0,
+    elevationGain,
     duration,
     startTime,
     points: track.points.map(p => [p.lat, p.lon] as [number, number]),
