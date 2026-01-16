@@ -10,6 +10,12 @@ const Hero: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // 只有非首页（通过 isAutoActive 控制的）贴纸才自动弹出，第一个页面的贴纸现在取消自动弹出
+    // setIsAutoActive 相关的逻辑保持，但我们会将其初始值设为 false 并不再通过观察器自动触发
+    
+    // 如果您未来想恢复自动弹出，可以取消下面的 return
+    return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {

@@ -192,9 +192,18 @@ async function processGPX(filename) {
     };
   });
 
-  // Downsample points for performance (target ~500 points)
-  const downsampleRate = Math.max(1, Math.floor(points.length / 500));
-  const optimizedPoints = points.filter((_, i) => i % downsampleRate === 0 || i === points.length - 1);
+  // Smoothing points before downsampling (moving average for coordinates)
+  const smoothedRawPoints = points.map((p, i) => {
+    const window = points.slice(Math.max(0, i - 1), Math.min(points.length, i + 2));
+    const avgLat = window.reduce((sum, curr) => sum + curr.lat, 0) / window.length;
+    const avgLon = window.reduce((sum, curr) => sum + curr.lon, 0) / window.length;
+    const avgSpeed = window.reduce((sum, curr) => sum + curr.speed, 0) / window.length;
+    return { lat: avgLat, lon: avgLon, speed: avgSpeed };
+  });
+
+  // Downsample points for performance (increase target to ~800 points for better smoothness)
+  const downsampleRate = Math.max(1, Math.floor(smoothedRawPoints.length / 800));
+  const optimizedPoints = smoothedRawPoints.filter((_, i) => i % downsampleRate === 0 || i === smoothedRawPoints.length - 1);
 
   // Group points by color segments to reduce SVG path count
   const getSpeedColor = (speed) => {
