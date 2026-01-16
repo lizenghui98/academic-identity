@@ -311,13 +311,11 @@ export const UI_TEXT: Record<string, BilingualText> = {
 
   // 登山计划
   hikingTitle: { en: 'Go For 2026', zh: '2026 登山计划' },
-  hikingSubtitle: { en: 'Scaling peaks, finding peace.', zh: '在数据与泥土之间，也在群山之巅。' },
+  hikingSubtitle: { en: '15 hikes planned for 2026', zh: '2026年15次登山计划' },
   totalDistance: { en: 'Total Distance', zh: '总里程' },
-  totalElevation: { en: 'Total Elevation', zh: '总爬升' },
   hikesCount: { en: 'Total Hikes', zh: '登山次数' },
   activityAnalysis: { en: 'Activity Analysis', zh: '运动分析' },
   duration: { en: 'Duration', zh: '用时' },
-  elevationGain: { en: 'Elevation Gain', zh: '海拔上升' },
   avgSpeed: { en: 'Avg Speed', zh: '平均速度' },
   startTime: { en: 'Start Time', zh: '开始时间' },
   trackingSource: { en: 'Tracking Source', zh: '数据来源' },

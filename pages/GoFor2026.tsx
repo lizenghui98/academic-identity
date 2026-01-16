@@ -1,28 +1,165 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { HikingStats, parseGPX } from '../components/hiking/utils';
-import { Activity, Map as MapIcon, Calendar, Clock, ArrowUpRight, ChevronRight, Mountain, Globe, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { HikingStats, parseGPX, HikingPoint } from '../components/hiking/utils';
+import { Activity, Calendar, Clock, ChevronRight, Mountain, Globe, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../components/LanguageContext';
 import { UI_TEXT } from '../constants';
 import { Link } from 'react-router-dom';
 
-// Component to fit map to polyline
-const RecenterMap = ({ points }: { points: [number, number][] }) => {
-  const map = useMap();
+interface MapMetadata {
+  bounds: {
+    minLat: number;
+    maxLat: number;
+    minLon: number;
+    maxLon: number;
+  };
+  width: number;
+  height: number;
+}
+
+// Static path visualization component using SVG with optional map background
+const StaticPath = ({ points, filename }: { points: HikingPoint[], filename: string }) => {
+  const [mapMeta, setMapMeta] = useState<MapMetadata | null>(null);
+
   useEffect(() => {
-    if (points.length > 0) {
-      map.fitBounds(points, { padding: [50, 50] });
-    }
-  }, [points, map]);
-  return null;
+    const loadMapMeta = async () => {
+      if (!filename) return;
+      try {
+        const metaUrl = `/data/hiking/maps/${filename.replace('.gpx', '')}.json`;
+        const response = await fetch(metaUrl);
+        if (response.ok) {
+          const data = await response.json();
+          setMapMeta(data);
+        }
+      } catch (error) {
+        console.error("Failed to load map metadata:", error);
+      }
+    };
+    loadMapMeta();
+  }, [filename]);
+
+  if (points.length === 0) return null;
+
+  // Find bounds for normalization (fallback if mapMeta not available)
+  const lats = points.map(p => p.lat);
+  const lons = points.map(p => p.lon);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+
+  const padding = 20;
+  const width = 800;
+  const height = 500;
+
+  // If we have map metadata, use its bounds for scaling
+  const effectiveMinLat = mapMeta ? mapMeta.bounds.minLat : minLat;
+  const effectiveMaxLat = mapMeta ? mapMeta.bounds.maxLat : maxLat;
+  const effectiveMinLon = mapMeta ? mapMeta.bounds.minLon : minLon;
+  const effectiveMaxLon = mapMeta ? mapMeta.bounds.maxLon : maxLon;
+
+  // Scale points to SVG space
+  const scaleX = (lon: number) => padding + (lon - effectiveMinLon) / (effectiveMaxLon - effectiveMinLon || 1) * (width - 2 * padding);
+  const scaleY = (lat: number) => height - (padding + (lat - effectiveMinLat) / (effectiveMaxLat - effectiveMinLat || 1) * (height - 2 * padding));
+
+  // Speed color mapping
+  const getSpeedColor = (speed: number) => {
+    const kmh = speed * 3.6;
+    if (kmh < 2) return '#ef4444'; // Red (Slow)
+    if (kmh < 4) return '#f59e0b'; // Amber (Moderate)
+    if (kmh < 6) return '#D4AF37'; // Gold (Target)
+    return '#22c55e'; // Green (Fast)
+  };
+
+  return (
+    <div className="w-full h-full relative flex items-center justify-center bg-neutral-900/50">
+      {/* Background Map Image */}
+      {filename && (
+        <img 
+          src={`/data/hiking/maps/${filename.replace('.gpx', '')}.jpg`}
+          alt="Map Background"
+          className="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-lighten grayscale-[30%] group-hover:opacity-100 transition-opacity duration-700"
+          onError={(e) => (e.currentTarget.style.display = 'none')}
+        />
+      )}
+      
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-full relative z-10"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        {/* Multi-colored path segments */}
+        {points.slice(1).map((p, i) => {
+          const prev = points[i];
+          const color = getSpeedColor(p.speed);
+          return (
+            <line
+              key={i}
+              x1={scaleX(prev.lon)}
+              y1={scaleY(prev.lat)}
+              x2={scaleX(p.lon)}
+              y2={scaleY(p.lat)}
+              stroke={color}
+              strokeWidth="4"
+              strokeLinecap="round"
+              filter="url(#glow)"
+              className="animate-[draw-line_0.5s_ease-out_forwards]"
+              style={{
+                opacity: 0,
+                animationDelay: `${(i / points.length) * 2}s`
+              }}
+            />
+          );
+        })}
+
+        {/* Start point */}
+        <circle 
+          cx={scaleX(points[0].lon)} 
+          cy={scaleY(points[0].lat)} 
+          r="6" 
+          fill="#D4AF37" 
+          className="drop-shadow-[0_0_8px_rgba(212,175,55,1)]" 
+        />
+        {/* End point */}
+        <circle 
+          cx={scaleX(points[points.length - 1].lon)} 
+          cy={scaleY(points[points.length - 1].lat)} 
+          r="6" 
+          fill="#ef4444" 
+          className="drop-shadow-[0_0_8px_rgba(239,68,68,1)]" 
+        />
+      </svg>
+      <style>{`
+        @keyframes draw-line {
+          from { opacity: 0; stroke-width: 0; }
+          to { opacity: 1; stroke-width: 4; }
+        }
+      `}</style>
+    </div>
+  );
 };
+
 
 const GoFor2026: React.FC = () => {
   const { locale, toggleLocale } = useLanguage();
   const [hikes, setHikes] = useState<HikingStats[]>([]);
   const [selectedHike, setSelectedHike] = useState<HikingStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Filter hikes for 2026
+  const hikes2026 = useMemo(() => 
+    hikes.filter(h => h.startTime.getFullYear() === 2026),
+  [hikes]);
+
+  const totalDistance = useMemo(() => 
+    hikes2026.reduce((acc, h) => acc + h.distance, 0),
+  [hikes2026]);
 
   useEffect(() => {
     const loadHikes = async () => {
@@ -127,20 +264,19 @@ const GoFor2026: React.FC = () => {
           </div>
           <div className="flex gap-8 border-l border-linen/10 pl-8 h-fit">
             <div className="text-center">
-              <p className="text-3xl font-serif text-gold font-bold">{hikes.length}</p>
-              <p className="text-[10px] uppercase tracking-widest text-linen/40 mt-1">{UI_TEXT.hikesCount[locale]}</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-4xl font-serif text-gold font-bold">{hikes2026.length}</p>
+                <p className="text-xl font-serif text-linen/20 font-bold">/ 15</p>
+              </div>
+              <p className="text-[10px] uppercase tracking-widest text-linen/40 mt-1">
+                {locale === 'zh' ? '本年度登山次数' : 'Hikes This Year'}
+              </p>
             </div>
-            <div className="text-center border-x border-linen/10 px-8">
-              <p className="text-3xl font-serif text-gold font-bold">
-                {(hikes.reduce((acc, h) => acc + h.distance, 0) / 1000).toFixed(1)}
+            <div className="text-center border-l border-linen/10 pl-8">
+              <p className="text-4xl font-serif text-gold font-bold">
+                {(totalDistance / 1000).toFixed(1)}
               </p>
               <p className="text-[10px] uppercase tracking-widest text-linen/40 mt-1">{UI_TEXT.totalDistance[locale]} (KM)</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-serif text-gold font-bold">
-                {Math.round(hikes.reduce((acc, h) => acc + h.elevationGain, 0))}
-              </p>
-              <p className="text-[10px] uppercase tracking-widest text-linen/40 mt-1">{UI_TEXT.totalElevation[locale]} (m)</p>
             </div>
           </div>
         </div>
@@ -148,7 +284,7 @@ const GoFor2026: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-12 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Sidebar - Hike List */}
-        <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
+        <div className="lg:col-span-4 space-y-6 order-1">
           <h2 className="text-xl font-serif italic border-b border-linen/10 pb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-gold" />
             {locale === 'zh' ? '登山时间线' : 'Hiking Timeline'}
@@ -177,12 +313,8 @@ const GoFor2026: React.FC = () => {
                 </h3>
                 <div className="flex items-center gap-4 mt-4">
                   <div className="flex items-center gap-1.5">
-                    <MapIcon className="w-3.5 h-3.5 opacity-60" />
+                    <Activity className="w-3.5 h-3.5 opacity-60" />
                     <span className="text-sm font-medium">{formatDistance(hike.distance)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
-                    <span className="text-sm font-medium">{Math.round(hike.elevationGain)}m</span>
                   </div>
                 </div>
               </button>
@@ -191,28 +323,12 @@ const GoFor2026: React.FC = () => {
         </div>
 
         {/* Main Content - Map & Stats */}
-        <div className="lg:col-span-8 space-y-8 order-1 lg:order-2">
+        <div className="lg:col-span-8 space-y-8 order-2">
           {selectedHike ? (
             <>
-              {/* Map Section */}
+              {/* Map Section - Now Static Path */}
               <div className="relative rounded-3xl overflow-hidden border border-linen/10 shadow-2xl h-[500px] bg-neutral-900 group">
-                <MapContainer 
-                  center={selectedHike.points[0]} 
-                  zoom={13} 
-                  style={{ height: '100%', width: '100%' }}
-                  zoomControl={false}
-                >
-                  <TileLayer
-                    url="https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
-                    subdomains={["1", "2", "3", "4"]}
-                    attribution='&copy; <a href="http://datav.aliyun.com/static/reference/main.html">AutoNavi</a> contributors'
-                  />
-                  <Polyline 
-                    pathOptions={{ color: '#D4AF37', weight: 4, opacity: 0.8, lineJoin: 'round' }} 
-                    positions={selectedHike.points} 
-                  />
-                  <RecenterMap points={selectedHike.points} />
-                </MapContainer>
+                <StaticPath points={selectedHike.points} filename={selectedHike.filename} />
                 
                 {/* Map Overlay Stats */}
                 <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-4 pointer-events-none">
@@ -223,15 +339,6 @@ const GoFor2026: React.FC = () => {
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.2em] text-linen/40 font-bold">{UI_TEXT.duration[locale]}</p>
                       <p className="text-lg font-serif italic text-linen">{formatDuration(selectedHike.duration)}</p>
-                    </div>
-                  </div>
-                  <div className="bg-neutral-950/80 backdrop-blur-xl border border-linen/10 p-4 rounded-2xl flex items-center gap-4 shadow-2xl">
-                    <div className="p-3 bg-gold/10 rounded-xl text-gold">
-                      <Mountain className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-linen/40 font-bold">{UI_TEXT.elevationGain[locale]}</p>
-                      <p className="text-lg font-serif italic text-linen">{Math.round(selectedHike.elevationGain)}m</p>
                     </div>
                   </div>
                 </div>
@@ -263,7 +370,7 @@ const GoFor2026: React.FC = () => {
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-linen/20 space-y-4">
-              <MapIcon className="w-20 h-20 opacity-10" />
+              <Activity className="w-20 h-20 opacity-10" />
               <p className="text-2xl font-serif italic">
                 {locale === 'zh' ? '请选择一次登山活动以查看详情' : 'Select a hike to view details'}
               </p>
@@ -281,7 +388,7 @@ const GoFor2026: React.FC = () => {
             <span className="font-serif italic text-xl font-bold tracking-tight">{UI_TEXT.hikingTitle[locale]}</span>
           </div>
           <p className="text-linen/40 text-sm font-light">
-            Built with React, Leaflet & Mi Fitness Data. &copy; 2026 Hiking Project.
+            Built with React, SVG Visualization & Mi Fitness Data. &copy; 2026 Hiking Project.
           </p>
         </div>
       </footer>
@@ -299,9 +406,6 @@ const GoFor2026: React.FC = () => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(212, 175, 55, 0.4);
-        }
-        .leaflet-container {
-          background: #0a0a0a !important;
         }
       `}</style>
     </div>

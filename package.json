@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "update-hikes": "node scripts/update-hikes.cjs",
+    "update-hikes": "node scripts/update-hikes.cjs && node scripts/generate-static-maps.js",
+    "update-hikes:force": "node scripts/update-hikes.cjs && node scripts/generate-static-maps.js --force",
     "predev": "npm run update-hikes",
     "prebuild": "npm run update-hikes"
   },
@@ -28,6 +29,8 @@
     "@types/react-leaflet": "^2.8.3",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "axios": "^1.13.2",
+    "sharp": "^0.34.5",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
