@@ -57,6 +57,21 @@ async function downloadTile(url, z, x, y, retries = 3) {
   }
 }
 
+function calculateDistance(p1, p2) {
+  const R = 6371e3; // metres
+  const phi1 = p1.lat * Math.PI / 180;
+  const phi2 = p2.lat * Math.PI / 180;
+  const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
+  const deltaLambda = (p2.lon - p1.lon) * Math.PI / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+          Math.cos(phi1) * Math.cos(phi2) *
+          Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
 async function processGPX(filename) {
   const gpxPath = path.join(HIKING_DIR, filename);
   const mapPath = path.join(MAPS_DIR, `${filename.replace('.gpx', '')}.jpg`);
@@ -161,6 +176,56 @@ async function processGPX(filename) {
     return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
   };
 
+  // Speed calculation and point processing
+  const points = track.points.map((p, i) => {
+    let speed = 0;
+    if (i > 0) {
+      const prev = track.points[i - 1];
+      const dist = calculateDistance(prev, p);
+      const time = (new Date(p.time).getTime() - new Date(prev.time).getTime()) / 1000;
+      if (time > 0) speed = dist / time;
+    }
+    return {
+      lat: p.lat,
+      lon: p.lon,
+      speed: speed
+    };
+  });
+
+  // Downsample points for performance (target ~500 points)
+  const downsampleRate = Math.max(1, Math.floor(points.length / 500));
+  const optimizedPoints = points.filter((_, i) => i % downsampleRate === 0 || i === points.length - 1);
+
+  // Group points by color segments to reduce SVG path count
+  const getSpeedColor = (speed) => {
+    const kmh = speed * 3.6;
+    if (kmh < 2) return '#ef4444'; // Red
+    if (kmh < 4) return '#f59e0b'; // Amber
+    if (kmh < 6) return '#D4AF37'; // Gold
+    return '#22c55e'; // Green
+  };
+
+  const segments = [];
+  if (optimizedPoints.length > 0) {
+    let currentSegment = { color: getSpeedColor(optimizedPoints[0].speed), points: [[optimizedPoints[0].lat, optimizedPoints[0].lon]] };
+    
+    for (let i = 1; i < optimizedPoints.length; i++) {
+      const p = optimizedPoints[i];
+      const color = getSpeedColor(p.speed);
+      
+      if (color === currentSegment.color) {
+        currentSegment.points.push([p.lat, p.lon]);
+      } else {
+        // Close current segment and start new one
+        // Add the current point to the end of the previous segment to ensure continuity
+        currentSegment.points.push([p.lat, p.lon]);
+        segments.push(currentSegment);
+        currentSegment = { color: color, points: [[p.lat, p.lon]] };
+      }
+    }
+    segments.push(currentSegment);
+  }
+
   const metadata = {
     bounds: {
       minLat: tile2lat(yEnd + 1, ZOOM),
@@ -169,7 +234,14 @@ async function processGPX(filename) {
       maxLon: tile2lon(xEnd + 1, ZOOM)
     },
     width,
-    height
+    height,
+    stats: {
+      distance: track.distance.total,
+      duration: (new Date(track.points[track.points.length - 1].time).getTime() - new Date(track.points[0].time).getTime()),
+      startTime: track.points[0].time,
+      name: gpx.metadata.name || filename.replace('.gpx', '')
+    },
+    segments: segments // Pre-calculated color segments
   };
 
   fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));

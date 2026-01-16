@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { HikingStats, parseGPX, HikingPoint } from '../components/hiking/utils';
+import { HikingStats, parseGPX, HikingMapData, fetchHikeData } from '../components/hiking/utils';
 import { Activity, Calendar, Clock, ChevronRight, Mountain, Globe, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../components/LanguageContext';
 import { UI_TEXT } from '../constants';
@@ -17,58 +17,17 @@ interface MapMetadata {
 }
 
 // Static path visualization component using SVG with optional map background
-const StaticPath = ({ points, filename }: { points: HikingPoint[], filename: string }) => {
-  const [mapMeta, setMapMeta] = useState<MapMetadata | null>(null);
+const StaticPath = ({ mapData, filename }: { mapData: HikingMapData | null, filename: string }) => {
+  if (!mapData || mapData.segments.length === 0) return null;
 
-  useEffect(() => {
-    const loadMapMeta = async () => {
-      if (!filename) return;
-      try {
-        const metaUrl = `/data/hiking/maps/${filename.replace('.gpx', '')}.json`;
-        const response = await fetch(metaUrl);
-        if (response.ok) {
-          const data = await response.json();
-          setMapMeta(data);
-        }
-      } catch (error) {
-        console.error("Failed to load map metadata:", error);
-      }
-    };
-    loadMapMeta();
-  }, [filename]);
-
-  if (points.length === 0) return null;
-
-  // Find bounds for normalization (fallback if mapMeta not available)
-  const lats = points.map(p => p.lat);
-  const lons = points.map(p => p.lon);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-
+  const { bounds, segments } = mapData;
   const padding = 20;
   const width = 800;
   const height = 500;
 
-  // If we have map metadata, use its bounds for scaling
-  const effectiveMinLat = mapMeta ? mapMeta.bounds.minLat : minLat;
-  const effectiveMaxLat = mapMeta ? mapMeta.bounds.maxLat : maxLat;
-  const effectiveMinLon = mapMeta ? mapMeta.bounds.minLon : minLon;
-  const effectiveMaxLon = mapMeta ? mapMeta.bounds.maxLon : maxLon;
-
   // Scale points to SVG space
-  const scaleX = (lon: number) => padding + (lon - effectiveMinLon) / (effectiveMaxLon - effectiveMinLon || 1) * (width - 2 * padding);
-  const scaleY = (lat: number) => height - (padding + (lat - effectiveMinLat) / (effectiveMaxLat - effectiveMinLat || 1) * (height - 2 * padding));
-
-  // Speed color mapping
-  const getSpeedColor = (speed: number) => {
-    const kmh = speed * 3.6;
-    if (kmh < 2) return '#ef4444'; // Red (Slow)
-    if (kmh < 4) return '#f59e0b'; // Amber (Moderate)
-    if (kmh < 6) return '#D4AF37'; // Gold (Target)
-    return '#22c55e'; // Green (Fast)
-  };
+  const scaleX = (lon: number) => padding + (lon - bounds.minLon) / (bounds.maxLon - bounds.minLon || 1) * (width - 2 * padding);
+  const scaleY = (lat: number) => height - (padding + (lat - bounds.minLat) / (bounds.maxLat - bounds.minLat || 1) * (height - 2 * padding));
 
   return (
     <div className="w-full h-full relative flex items-center justify-center bg-neutral-900/50">
@@ -94,46 +53,53 @@ const StaticPath = ({ points, filename }: { points: HikingPoint[], filename: str
           </filter>
         </defs>
 
-        {/* Multi-colored path segments */}
-        {points.slice(1).map((p, i) => {
-          const prev = points[i];
-          const color = getSpeedColor(p.speed);
+        {/* Pre-calculated multi-colored path segments */}
+        {segments.map((segment, segIdx) => {
+          const pathData = segment.points.reduce((acc, p, i) => {
+            const x = scaleX(p[1]);
+            const y = scaleY(p[0]);
+            return acc + (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+          }, '');
+
           return (
-            <line
-              key={i}
-              x1={scaleX(prev.lon)}
-              y1={scaleY(prev.lat)}
-              x2={scaleX(p.lon)}
-              y2={scaleY(p.lat)}
-              stroke={color}
+            <path
+              key={segIdx}
+              d={pathData}
+              fill="none"
+              stroke={segment.color}
               strokeWidth="4"
               strokeLinecap="round"
+              strokeLinejoin="round"
               filter="url(#glow)"
               className="animate-[draw-line_0.5s_ease-out_forwards]"
               style={{
                 opacity: 0,
-                animationDelay: `${(i / points.length) * 2}s`
+                animationDelay: `${(segIdx / segments.length) * 2}s`
               }}
             />
           );
         })}
 
         {/* Start point */}
-        <circle 
-          cx={scaleX(points[0].lon)} 
-          cy={scaleY(points[0].lat)} 
-          r="6" 
-          fill="#D4AF37" 
-          className="drop-shadow-[0_0_8px_rgba(212,175,55,1)]" 
-        />
+        {segments.length > 0 && segments[0].points.length > 0 && (
+          <circle 
+            cx={scaleX(segments[0].points[0][1])} 
+            cy={scaleY(segments[0].points[0][0])} 
+            r="6" 
+            fill="#D4AF37" 
+            className="drop-shadow-[0_0_8px_rgba(212,175,55,1)]" 
+          />
+        )}
         {/* End point */}
-        <circle 
-          cx={scaleX(points[points.length - 1].lon)} 
-          cy={scaleY(points[points.length - 1].lat)} 
-          r="6" 
-          fill="#ef4444" 
-          className="drop-shadow-[0_0_8px_rgba(239,68,68,1)]" 
-        />
+        {segments.length > 0 && (
+          <circle 
+            cx={scaleX(segments[segments.length - 1].points[segments[segments.length - 1].points.length - 1][1])} 
+            cy={scaleY(segments[segments.length - 1].points[segments[segments.length - 1].points.length - 1][0])} 
+            r="6" 
+            fill="#ef4444" 
+            className="drop-shadow-[0_0_8px_rgba(239,68,68,1)]" 
+          />
+        )}
       </svg>
       <style>{`
         @keyframes draw-line {
@@ -169,14 +135,15 @@ const GoFor2026: React.FC = () => {
         if (!manifestResponse.ok) throw new Error('Failed to fetch manifest');
         const hikeFilenames: string[] = await manifestResponse.json();
         
+        // Only load basic info from parseGPX (lightweight)
         const loadedHikes = await Promise.all(
           hikeFilenames.map(filename => parseGPX(`/data/hiking/${filename}`))
         );
 
-        // 1. Sort chronologically to assign "No.X" sequence
+        // 1. Sort chronologically
         const chronologicalHikes = [...loadedHikes].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
-        // 2. Assign names based on sequence and date: No.序号_YYYYMMDD
+        // 2. Assign names
         const namedHikes = chronologicalHikes.map((hike, index) => {
           const date = hike.startTime;
           const yyyy = date.getFullYear();
@@ -190,12 +157,14 @@ const GoFor2026: React.FC = () => {
           };
         });
 
-        // 3. Sort by date descending for display (latest first)
         const sortedHikes = namedHikes.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
-        
         setHikes(sortedHikes);
+
+        // Auto-select first hike and load its detailed map data
         if (sortedHikes.length > 0) {
-          setSelectedHike(sortedHikes[0]);
+          const firstHike = sortedHikes[0];
+          const mapData = await fetchHikeData(firstHike.filename);
+          setSelectedHike({ ...firstHike, mapData });
         }
       } catch (error) {
         console.error("Failed to load hiking data:", error);
@@ -206,6 +175,20 @@ const GoFor2026: React.FC = () => {
 
     loadHikes();
   }, []);
+
+  const handleHikeSelect = async (hike: HikingStats) => {
+    if (selectedHike?.filename === hike.filename) return;
+    
+    // Set basic info first for instant UI response
+    setSelectedHike(hike);
+    
+    try {
+      const mapData = await fetchHikeData(hike.filename);
+      setSelectedHike({ ...hike, mapData });
+    } catch (error) {
+      console.error("Failed to load hike map data:", error);
+    }
+  };
 
   const formatDistance = (m: number) => (m / 1000).toFixed(2) + ' km';
   const formatDuration = (ms: number) => {
@@ -293,9 +276,9 @@ const GoFor2026: React.FC = () => {
             {hikes.map((hike, idx) => (
               <button
                 key={idx}
-                onClick={() => setSelectedHike(hike)}
+                onClick={() => handleHikeSelect(hike)}
                 className={`w-full text-left p-6 rounded-2xl transition-all duration-300 group border ${
-                  selectedHike === hike 
+                  selectedHike?.filename === hike.filename 
                     ? 'bg-gold border-gold text-neutral-950 shadow-xl shadow-gold/20 scale-[1.02]' 
                     : 'bg-neutral-900/50 border-linen/5 hover:border-gold/30 hover:bg-neutral-900 text-linen'
                 }`}
@@ -328,7 +311,7 @@ const GoFor2026: React.FC = () => {
             <>
               {/* Map Section - Now Static Path */}
               <div className="relative rounded-3xl overflow-hidden border border-linen/10 shadow-2xl h-[500px] bg-neutral-900 group">
-                <StaticPath points={selectedHike.points} filename={selectedHike.filename} />
+                <StaticPath mapData={selectedHike.mapData || null} filename={selectedHike.filename} />
                 
                 {/* Map Overlay Stats */}
                 <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-4 pointer-events-none">

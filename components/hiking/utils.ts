@@ -7,14 +7,44 @@ export interface HikingPoint {
   time: Date;
 }
 
+export interface HikingSegment {
+  color: string;
+  points: [number, number][]; // [lat, lon]
+}
+
+export interface HikingMapData {
+  bounds: {
+    minLat: number;
+    maxLat: number;
+    minLon: number;
+    maxLon: number;
+  };
+  width: number;
+  height: number;
+  stats: {
+    distance: number;
+    duration: number;
+    startTime: string;
+    name: string;
+  };
+  segments: HikingSegment[];
+}
+
 export interface HikingStats {
   name: string;
   filename: string;
   distance: number; // meters
   duration: number; // milliseconds
   startTime: Date;
-  points: HikingPoint[];
+  mapData?: HikingMapData;
 }
+
+export const fetchHikeData = async (filename: string): Promise<HikingMapData> => {
+  const name = filename.replace('.gpx', '');
+  const response = await fetch(`/data/hiking/maps/${name}.json`);
+  if (!response.ok) throw new Error(`Failed to fetch map data for ${filename}`);
+  return response.json();
+};
 
 export const parseGPX = async (url: string): Promise<HikingStats> => {
   const response = await fetch(url);
@@ -65,7 +95,6 @@ export const parseGPX = async (url: string): Promise<HikingStats> => {
     distance: track.distance.total,
     duration,
     startTime,
-    points: smoothedPoints,
   };
 };
 
